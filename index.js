@@ -1,4 +1,3 @@
-hello 
 require("./utils.js");
 
 require('dotenv').config();
