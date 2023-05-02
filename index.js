@@ -51,7 +51,7 @@ app.get("/", (req, res) => {
   if (req.session.authenticated) {
     var html = `
         <div style="font-size: 30px;">Hello, ${req.session.name}!<div> 
-        <div><button onclick="window.location.href='/members'">Go to Members Only Area!/button></div>
+        <div><button onclick="window.location.href='/members'">Go to Members Only Area!</button></div>
         <div><button onclick="window.location.href='/logout'">Log Out</button></div>
        
         `;
