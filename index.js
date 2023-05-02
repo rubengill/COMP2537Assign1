@@ -51,7 +51,7 @@ app.get("/", (req, res) => {
   if (req.session.authenticated) {
     var html = `
         <div style="font-size: 30px;">Hello, ${req.session.name}!<div> 
-        <div><button onclick="window.location.href='/members'">Go to Members Area</button></div>
+        <div><button onclick="window.location.href='/members'">Go to Members Only Area!/button></div>
         <div><button onclick="window.location.href='/logout'">Log Out</button></div>
        
         `;
@@ -144,7 +144,7 @@ app.post("/submitUser", async (req, res) => {
   if (validationResult.error != null) {
     console.log(validationResult.error);
     var errorMessage = validationResult.error.details[0].message;
-    res.send(`There was an error: ${errorMessage}. Please <a href="/signup">retry</a>.`);
+    res.send(`There was an error: ${errorMessage}. Try <a href="/signup">again</a>.`);
     return;
   }
 
@@ -183,7 +183,7 @@ app.post("/loggingin", async (req, res) => {
   console.log(result);
   if (result.length != 1) {
     console.log("User not found");
-    res.send(`User not found. Please <a href="/login">try again</a>.`);
+    res.send(`User not found. Try <a href="/login">again</a>.`);
     return;
   }
   if (await bcrypt.compare(password, result[0].password)) {
@@ -212,7 +212,7 @@ app.get("/loggedin", (req, res) => {
   var html = `
   <h1>Hello, ${name}!</h1>
   <form action='/members' method='get'>
-  <button>Go to the Members Area</button>
+  <button>Go to the Members Only Area</button>
   </form>
   <button onclick="window.location.href='/logout'">Log out</button>
   `;
@@ -243,9 +243,9 @@ app.get("/members", (req, res) => {
 });
 
 const imageURL = [
-  "Ayato.jpg",
-  "Hutao.jpg",
-  "Paimon.gif"
+  "cat1.jpg",
+  "cat2.jpg",
+  "cat.gif"
 ];
 
 app.get("/image/:id", (req, res) => {
