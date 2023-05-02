@@ -47,10 +47,25 @@ app.use(session({
 }
 ));
 
-app.get('/', (req,res) => {
-    res.send("<h1>Hello World!</h1>");
-});
-
+app.get("/", (req, res) => {
+    if (req.session.authenticated) {
+      var html = `
+          <div style="font-size: 30px;">Hello, ${req.session.name}!<div> 
+          <div><button onclick="window.location.href='/members'">Members only</button></div>
+          <div><button onclick="window.location.href='/logout'">Sign Out</button></div>
+         
+          `;
+      res.send(html);
+    } else {
+      var html = `
+          <div><button onclick="window.location.href='/signup'">Sign up</button></div>
+          <div><button onclick="window.location.href='/login'">Log In</button></div>
+         
+          `;
+      res.send(html);
+    }
+  });
+//Shows NoSQL Injection vulnerability 
 app.get('/nosql-injection', async (req,res) => {
 	var username = req.query.user;
 
@@ -60,6 +75,7 @@ app.get('/nosql-injection', async (req,res) => {
 	}
 	console.log("user: "+username);
 
+    //Prevents NoSQL injection attacks 
 	const schema = Joi.string().max(20).required();
 	const validationResult = schema.validate(username);
 
@@ -78,6 +94,7 @@ app.get('/nosql-injection', async (req,res) => {
 
 	console.log(result);
 
+    //Queue the database and return the username with a greeting 
     res.send(`<h1>Hello ${username}</h1>`);
 });
 
@@ -87,30 +104,30 @@ app.get('/about', (req,res) => {
     res.send("<h1 style='color:"+color+";'>Patrick Guichon</h1>");
 });
 
-app.get('/contact', (req,res) => {
-    var missingEmail = req.query.missing;
-    var html = `
-        email address:
-        <form action='/submitEmail' method='post'>
-            <input name='email' type='text' placeholder='email'>
-            <button>Submit</button>
-        </form>
-    `;
-    if (missingEmail) {
-        html += "<br> email is required";
-    }
-    res.send(html);
-});
+// app.get('/contact', (req,res) => {
+//     var missingEmail = req.query.missing;
+//     var html = `
+//         email address:
+//         <form action='/submitEmail' method='post'>
+//             <input name='email' type='text' placeholder='email'>
+//             <button>Submit</button>
+//         </form>
+//     `;
+//     if (missingEmail) {
+//         html += "<br> email is required";
+//     }
+//     res.send(html);
+// });
 
-app.post('/submitEmail', (req,res) => {
-    var email = req.body.email;
-    if (!email) {
-        res.redirect('/contact?missing=1');
-    }
-    else {
-        res.send("Thanks for subscribing with your email: "+email);
-    }
-});
+// app.post('/submitEmail', (req,res) => {
+//     var email = req.body.email;
+//     if (!email) {
+//         res.redirect('/contact?missing=1');
+//     }
+//     else {
+//         res.send("Thanks for subscribing with your email: "+email);
+//     }
+// });
 
 
 app.get('/createUser', (req,res) => {
@@ -139,16 +156,18 @@ app.get('/login', (req,res) => {
 });
 
 app.post('/submitUser', async (req,res) => {
+    var email = req.body.email;
     var username = req.body.username;
     var password = req.body.password;
 
 	const schema = Joi.object(
 		{
+            email: Joi.string().email().required(),
 			username: Joi.string().alphanum().max(20).required(),
 			password: Joi.string().max(20).required()
 		});
 	
-	const validationResult = schema.validate({username, password});
+	const validationResult = schema.validate({email, username, password});
 	if (validationResult.error != null) {
 	   console.log(validationResult.error);
 	   res.redirect("/createUser");
@@ -157,7 +176,7 @@ app.post('/submitUser', async (req,res) => {
 
     var hashedPassword = await bcrypt.hash(password, saltRounds);
 	
-	await userCollection.insertOne({username: username, password: hashedPassword});
+	await userCollection.insertOne({username: username, password: hashedPassword, email: email,});
 	console.log("Inserted user");
 
     var html = "successfully created user";
@@ -165,18 +184,18 @@ app.post('/submitUser', async (req,res) => {
 });
 
 app.post('/loggingin', async (req,res) => {
-    var username = req.body.username;
+    var email = req.body.email;
     var password = req.body.password;
 
 	const schema = Joi.string().max(20).required();
-	const validationResult = schema.validate(username);
+	const validationResult = schema.validate(email);
 	if (validationResult.error != null) {
 	   console.log(validationResult.error);
 	   res.redirect("/login");
 	   return;
 	}
 
-	const result = await userCollection.find({username: username}).project({username: 1, password: 1, _id: 1}).toArray();
+	const result = await userCollection.find({email: email}).project({email: 1,username: 1, password: 1, _id: 1}).toArray();
 
 	console.log(result);
 	if (result.length != 1) {
@@ -187,7 +206,8 @@ app.post('/loggingin', async (req,res) => {
 	if (await bcrypt.compare(password, result[0].password)) {
 		console.log("correct password");
 		req.session.authenticated = true;
-		req.session.username = username;
+		req.session.email = email;
+        req.session.username = result[0].name;
 		req.session.cookie.maxAge = expireTime;
 
 		res.redirect('/loggedIn');
@@ -205,19 +225,43 @@ app.get('/loggedin', (req,res) => {
         res.redirect('/login');
     }
     var html = `
-    You are logged in!
-    `;
-    res.send(html);
+    <h1>Hello, ${username}!</h1>
+  <form action='/members' method='get'>
+  <button>Click to go to the Members Only area!</button>
+  </form>
+  <button onclick="window.location.href='/logout'">Log out</button>
+  `;
+  res.send(html);
 });
 
 app.get('/logout', (req,res) => {
 	req.session.destroy();
-    var html = `
-    You are logged out.
-    `;
-    res.send(html);
+    res.redirect('/');
 });
 
+app.get("/members", (req, res) => {
+    if (!req.session.name) {
+      res.redirect("/");
+      return;
+    }
+  
+    const name = req.session.name;
+    const image = imageURL[Math.floor(Math.random() * imageURL.length)];
+  
+    const html = `
+        <h1>Hello, ${name}!</h1>
+        <img src="/${image}" alt="Random image">
+        <br><br>
+        <button onclick="window.location.href='/logout'">Log out</button>
+      `;
+    res.send(html);
+  });
+
+  const imageURL = [
+    "Ayato.jpg",
+    "Hutao.jpg",
+    "Paimon.gif"
+  ];
 
 app.get('/cat/:id', (req,res) => {
 
@@ -233,7 +277,6 @@ app.get('/cat/:id', (req,res) => {
         res.send("Invalid cat id: "+cat);
     }
 });
-
 
 app.use(express.static(__dirname + "/public"));
 
