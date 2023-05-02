@@ -98,10 +98,17 @@ app.get('/nosql-injection', async (req,res) => {
     res.send(`<h1>Hello ${username}</h1>`);
 });
 
-app.get('/about', (req,res) => {
-    var color = req.query.color;
-
-    res.send("<h1 style='color:"+color+";'>Patrick Guichon</h1>");
+app.get('/signup', (req,res) => {
+    var html = `
+    create user 
+    <form action='/submitUser' method='post'>
+        <input name='name' type='text' placeholder='name'><br>
+        <input name='email' type='text' placeholder='email'><br>
+        <input name='password' type='password' placeholder='password'><br>
+        <button>Submit</button>
+    </form>
+    `;
+    res.send(html);
 });
 
 // app.get('/contact', (req,res) => {
